@@ -195,6 +195,7 @@ void FuseFadeOut(const cv::Mat& roi1, const cv::Mat& roi2, cv::Mat& roiResult){
 	const int step = roi1.step;
 	int offset = 0;
 	int r = 0, c = 0;
+	//在此处涉及到了step，每行不只是cols个数据了，而是step，用mat.ptr安全
 	for (r = 0; r < rows; ++r){
 		ratio2 = (double)r / (double)rows;
 		ratio1 = 1 - ratio2;
@@ -205,4 +206,8 @@ void FuseFadeOut(const cv::Mat& roi1, const cv::Mat& roi2, cv::Mat& roiResult){
 			dataResult[c] = ratio1*data1[c] + ratio2*data2[c];
 		}
 	}
+}
+
+void FuseMultisolution(const cv::Mat& roi1, const cv::Mat& roi2, cv::Mat& roiResult){
+
 }

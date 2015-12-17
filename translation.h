@@ -17,9 +17,13 @@ extern const int RATIO;
 */
 cv::Mat Fuse(const std::vector<cv::Mat>& images, std::vector<std::pair<int, int>> translationParams);
 /*
-	融合roi1、roi2将结果存放到roiResult中，roi1、roi2行列都相同
+	融合roi1、roi2将结果存放到roiResult中，roi1、roi2行列都相同，前提是 roiResult已经分配内存
 */
 void FuseFadeOut(const cv::Mat& roi1, const cv::Mat& roi2,cv::Mat& roiResult);
+/*
+使用多分辨率对roi1,和roi2进行融合,结果存放到roiResult中，前提是 roiResult已经分配内存
+*/
+void FuseMultisolution(const cv::Mat& roi1, const cv::Mat& roi2, cv::Mat& roiResult);
 /*
 	对输入的图像序列Images进行配准，处理后的图像存放到imageOut中，imageOut中相邻两幅图配准结果存放到TranslationParams中
 */
