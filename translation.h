@@ -7,9 +7,11 @@
 #include<algorithm>
 #include<numeric>
 #include<iostream>
-#define  MATTYPE CV_16UC1
-typedef  unsigned short PIXTYPE;
-//typedef  unsigned char PIXTYPE;
+//#define  MATTYPE CV_16UC1
+//typedef  unsigned short PIXTYPE;
+#define  MATTYPE CV_8UC1
+typedef  unsigned char PIXTYPE;
+
 extern const int RATIO;
 #define CHECK_MAT(M) if(M.data==NULL) {std::cout<<"打开图片失败，退出"<<std::endl;return 1;}
 /*
@@ -20,6 +22,11 @@ cv::Mat Fuse(const std::vector<cv::Mat>& images, std::vector<std::pair<int, int>
 	融合roi1、roi2将结果存放到roiResult中，roi1、roi2行列都相同，前提是 roiResult已经分配内存
 */
 void FuseFadeOut(const cv::Mat& roi1, const cv::Mat& roi2,cv::Mat& roiResult);
+/*
+	the fade in and fade out methode is so abrupt,the seam is still obvious when the exposures between images are very different.
+	Use a S curv instead straight line can make better result.
+*/
+void FuseCurve(const cv::Mat& roi1, const cv::Mat& roi2, cv::Mat& roiResult);
 /*
 使用多分辨率对roi1,和roi2进行融合,结果存放到roiResult中，前提是 roiResult已经分配内存
 */

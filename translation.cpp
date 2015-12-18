@@ -178,7 +178,8 @@ cv::Mat Fuse(const std::vector<cv::Mat>& images, std::vector<std::pair<int, int>
 		roiTemp = result(cv::Rect(iter1->first + x0, iter1->second + y0, image1.cols, image1.rows));
 		image1.copyTo(roiTemp);
 		//融合roi0和roi1到roiResult中
-		FuseFadeOut(roi0, roi1, roiResult);
+		//FuseFadeOut(roi0, roi1, roiResult);
+		FuseCurve(roi0, roi1, roiResult);
 		//为下轮迭代准备数据
 		x0 += iter1->first;
 		y0 += iter1->second;
@@ -210,4 +211,30 @@ void FuseFadeOut(const cv::Mat& roi1, const cv::Mat& roi2, cv::Mat& roiResult){
 
 void FuseMultisolution(const cv::Mat& roi1, const cv::Mat& roi2, cv::Mat& roiResult){
 
+}
+
+
+void FuseCurve(const cv::Mat& roi1, const cv::Mat& roi2, cv::Mat& roiResult){
+	const int rows = roi1.rows;
+	const int cols = roi2.cols;
+	int r = 0, c = 0;
+	double rat = 0;
+	const int center = rows / 2;
+	int dist = 0;
+	for (r = 0; r < rows; ++r){
+		if (r <= center){
+			dist = r;
+			rat = 2 * (pow((double)dist / rows, 2));
+		}
+		else{
+			dist = rows - r;
+			rat = 1 - 2 * (pow((double)dist / rows, 2));
+		}
+		const PIXTYPE* data1 = roi1.ptr<PIXTYPE>(r);
+		const PIXTYPE* data2 = roi2.ptr<PIXTYPE>(r);
+		PIXTYPE* dataResult = roiResult.ptr<PIXTYPE>(r);
+		for (c = 0; c < cols; ++c){
+			dataResult[c] = (1 - rat)*data1[c] + rat*data2[c];
+		}
+	}
 }
