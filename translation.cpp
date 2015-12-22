@@ -44,16 +44,24 @@ void FFTTranslation(const cv::Mat& image1, const cv::Mat& image2, int& x, int& y
 	}
 	/*交叉功率谱反傅立叶变换*/
 	fftw_execute(p3);
+
+
+	cv::Mat mat(rows, cols, CV_64FC1, cv::Scalar(0));
+	double* matData=(double*) mat.data;
 	/*求取脉冲坐标*/
 	temp = INT_MIN;
 	int j0 = 0;
 	for (j = 0; j < fSize; ++j){
 		crossOut[j][0] /= (double)fSize;
+
+		matData[j] = crossOut[j][0];
+
 		if (crossOut[j][0]>temp){
 			temp = crossOut[j][0];
 			j0 = j;
 		}
 	}
+	WriteMatFile(mat, "pulse.mat");
 	unsigned int x0 = 0, y0 = 0;
 	y0 = j0 / cols;
 	x0 = j0%cols;
@@ -62,6 +70,7 @@ void FFTTranslation(const cv::Mat& image1, const cv::Mat& image2, int& x, int& y
 	if (x0 > (cols / 2)){
 		x = -(cols - x0);
 	}
+	
 	//清理内存
 	fftw_destroy_plan(p1);
 	fftw_destroy_plan(p2);
@@ -73,13 +82,56 @@ void FFTTranslation(const cv::Mat& image1, const cv::Mat& image2, int& x, int& y
 	fftw_free(crossIn);
 	fftw_free(crossOut);
 }
-
+bool WriteMatFile(const cv::Mat& mat, const std::string& fileName){
+	std::ofstream out;
+	out.open(fileName.c_str(), std::ofstream::binary);
+	if (!out){
+		std::cerr << "faild to open the file: " << fileName << std::endl;
+		return false;
+	}
+	//double占8个字节
+	cv::Mat mat2;
+	mat.convertTo(mat2, CV_64FC1);
+	int rows = mat2.rows;
+	int cols = mat2.cols;
+	if (mat2.isContinuous()){
+		cols = rows*cols;
+		rows = 1;
+	}
+	for (int r = 0; r < rows; ++r){
+		const char* ptr = (char*)mat2.ptr(r);
+		out.write(ptr, cols*mat2.elemSize());
+	}
+	out.close();
+	return true;
+}
 cv::Mat GetRows(const cv::Mat& mat, int start, int end){
 	cv::Mat roi = mat.rowRange(start, end);
 	cv::Mat duplicateMat = roi.clone();
 	return duplicateMat;
 }
 
+cv::Mat GetHarris(const cv::Mat& mat){
+	//1.得到harris角点矩阵
+	cv::Mat cornerStrength;
+	//3-高斯模板大小，3-sobel模板大小，0.05-k
+	cv::cornerHarris(mat, cornerStrength, 3, 3, 0.1);
+	//2.角点矩阵中局部极大值检测
+	cv::Mat dilated;
+	cv::dilate(cornerStrength, dilated, cv::Mat());
+	//局部极大值掩码
+	cv::Mat localMask;
+	cv::compare(cornerStrength, dilated, localMask, cv::CMP_EQ);
+	//3.角点矩阵阈值过滤
+	double mins, maxs;
+	cv::minMaxLoc(cornerStrength, &mins, &maxs);
+	//0.00001*maxs -角点阈值
+	cv::threshold(cornerStrength, cornerStrength, 0.002*maxs, 255, CV_THRESH_BINARY);
+	//4.去除非极大值角点
+	cornerStrength.convertTo(cornerStrength, CV_8U);
+	cv::bitwise_and(cornerStrength, localMask, cornerStrength);
+	return cornerStrength;
+}
 std::vector<cv::Mat> ColsUnitize(const std::vector<cv::Mat>& images){
 	auto minColsIter= std::min_element(images.begin(), images.end(), [](const cv::Mat& mat1,const cv::Mat& mat2){return mat1.cols<mat2.cols; });
 	const unsigned int minCols = (*minColsIter).cols;
@@ -93,6 +145,23 @@ std::vector<cv::Mat> ColsUnitize(const std::vector<cv::Mat>& images){
 		imagesOut.push_back(image);
 	}
 	return imagesOut;
+}
+/*
+	将mat1跟mat2大小统一，mat1取得是下半部分，mat2取得是上半部分
+	mat1out-(out)统一大小后mat1的输出
+	mat2out-(out)统一大小后mat2的输出
+*/
+void ColsRowsUnitize(const cv::Mat& mat1, const cv::Mat& mat2, cv::Mat& mat1out, cv::Mat& mat2out){
+	cv::Mat roi1, roi2;
+	const int rows = std::min(mat1.rows, mat2.rows);
+	mat1.rowRange(mat1.rows - rows, mat1.rows).copyTo(roi1);
+	mat2.rowRange(0, rows).copyTo(roi2);
+	std::vector<cv::Mat> images;
+	images.push_back(roi1);
+	images.push_back(roi2);
+	std::vector<cv::Mat> image2s=ColsUnitize(images);
+	mat1out = image2s[0];
+	mat2out = image2s[1];
 }
 void Register(const std::vector<cv::Mat>& images, std::vector<cv::Mat>& imagesOut, std::vector<std::pair<int, int>>& TranslationParams){
 	imagesOut = ColsUnitize(images);
@@ -113,6 +182,12 @@ void Register(const std::vector<cv::Mat>& images, std::vector<cv::Mat>& imagesOu
 	}
 }
 
+cv::Mat EdgeEnhance(cv::Mat mat){
+	cv::Mat blur;
+	cv::GaussianBlur(mat, blur, cv::Size(3, 3), 0);
+	cv::Mat temp = mat - blur;
+	return mat + temp;
+}
 cv::Mat Fuse(const std::vector<cv::Mat>& images, std::vector<std::pair<int, int>> translationParams){
 	int x0 = translationParams[0].first;
 	//xs是translationParams中对x的累计和集合

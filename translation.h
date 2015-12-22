@@ -7,6 +7,7 @@
 #include<algorithm>
 #include<numeric>
 #include<iostream>
+#include<fstream>
 //#define  MATTYPE CV_16UC1
 //typedef  unsigned short PIXTYPE;
 #define  MATTYPE CV_8UC1
@@ -14,6 +15,12 @@ typedef  unsigned char PIXTYPE;
 
 extern const int RATIO;
 #define CHECK_MAT(M) if(M.data==NULL) {std::cout<<"打开图片失败，退出"<<std::endl;return 1;}
+/*
+	使用非提升掩膜进行边缘提升
+*/
+cv::Mat EdgeEnhance(cv::Mat mat);
+/*获得一副图像的harris角点二值图像*/
+cv::Mat GetHarris(const cv::Mat& mat);
 /*
 	根据translationParams将imges中图像进行融合
 */
@@ -40,6 +47,12 @@ void Register(const std::vector<cv::Mat>& images, std::vector<cv::Mat>& imagesOu
 */
 std::vector<cv::Mat> ColsUnitize(const std::vector<cv::Mat>& images);
 /*
+	将mat1跟mat2大小统一，mat1取得是下半部分，mat2取得是上半部分
+	mat1out-(out)统一大小后mat1的输出
+	mat2out-(out)统一大小后mat2的输出
+*/
+void ColsRowsUnitize(const cv::Mat& mat1, const cv::Mat& mat2, cv::Mat& mat1out, cv::Mat& mat2out);
+/*
 	获得兴趣区域mat
 */
 cv::Mat GetRows(const cv::Mat& mat,int start,int end);
@@ -48,3 +61,5 @@ cv::Mat GetRows(const cv::Mat& mat,int start,int end);
 	由于傅立叶的周期性，向下向右平移为正.计算时，一定是Image1在上，image2在下，y>0,若计算出来水平平移大于2/cols就是向左x<0
 */
 void FFTTranslation(const cv::Mat& image1, const cv::Mat& image2,int& x,int& y);
+
+bool WriteMatFile(const cv::Mat& mat, const std::string& fileName);
